@@ -40,13 +40,17 @@ namespace Entity_Continuity
             {
                 return 0;
             }
-            else if (Cells[y][x] is Entity)
+            else if (Cells[y][x] is Cell)
             {
                 return 1;
             }
-            else if (Cells[y][x] is Food)
+            else if (Cells[y][x] is Entity)
             {
                 return 2;
+            }
+            else if (Cells[y][x] is Food)
+            {
+                return 3;
             }
             else
             {
@@ -79,7 +83,29 @@ namespace Entity_Continuity
             Console.ResetColor();
         }
 
-        public Food GetClosestFood(int x, int y)
+        //Get all the cells not in the house
+        public List<Entity> Entities(string houseName)
+        {
+            List<Entity> entities = new List<Entity>();
+
+            for (int y = 0; y < Cells.Count; y++)
+            {
+                for (int x = 0; x < Cells[y].Count; x++)
+                {
+                    if (Cells[y][x] is Entity)
+                    {
+                        if (Cells[y][x].House.HouseName == houseName)
+                        {
+                            entities.Add(Cells[y][x] as Entity);
+                        }
+                    }
+                }
+            }
+
+            return entities;
+        }
+
+        public Food GetClosestFood(int x, int y, string houseName)
         {
             Food closest = null;
             int closestDistance = int.MaxValue;
@@ -92,10 +118,60 @@ namespace Entity_Continuity
                     {
                         int distance = (int)Math.Sqrt(Math.Pow(x - j, 2) + Math.Pow(y - i, 2));
 
+                        if (closest == null)
+                        {
+                            closest = Cells[i][j] as Food;
+                        }
+
                         if (distance < closestDistance)
                         {
-                            closest = (Food)Cells[i][j];
-                            closestDistance = distance;
+                            List<int> otherDistancesToFood = new List<int>();
+
+                            // //Add all entities to a dictionary with their distance from the food.
+
+
+                            // Parallel.ForEach(Entities(houseName), (entity) =>
+                            // {
+                            //     if (entity.X != x && entity.Y != y)
+                            //     {
+                            //         otherDistancesToFood.Add((int)Math.Sqrt(Math.Pow(entity.X - j, 2) + Math.Pow(entity.Y - i, 2)));
+                            //     }
+                            // });
+
+                            foreach (var entity in Entities(houseName))
+                            {
+                                if (entity.X != x && entity.Y != y)
+                                {
+                                    otherDistancesToFood.Add((int)Math.Sqrt(Math.Pow(entity.X - j, 2) + Math.Pow(entity.Y - i, 2)));
+                                }
+                            }
+
+                            // if (otherDistancesToFood.Count >= 1)
+                            // {
+                            //     Console.Clear();
+
+                            //     Console.WriteLine(Entities(houseName).Count);
+
+                            //     //Output otherDistancesToFood
+                            //     foreach (int distanceToFood in otherDistancesToFood)
+                            //     {
+                            //         Console.WriteLine("Loop: " + distanceToFood);
+                            //     }
+
+                            //     Console.WriteLine(distance);
+
+                            //     Console.ReadKey();
+                            // }
+
+                            // // //If there are no entities, or if the closest entity is closer than the food, then the food is the closest.
+                            if (otherDistancesToFood.Count == 0 || otherDistancesToFood.Min() > distance)
+                            {
+                                closest = Cells[i][j] as Food;
+                                closestDistance = distance;
+                            }
+
+                            // closest = (Food)Cells[i][j];
+                            // closestDistance = distance;
                         }
                     }
                 }
@@ -118,10 +194,10 @@ namespace Entity_Continuity
             Console.Write(withGap ? " #" : "#");
         }
 
-        //Get the distance between two cells using the pythagorean theorem
+        //Get the distance between two cells using the manhattan distance.
         public static int Distance(int x, int y, int x2, int y2)
         {
-            return (int)Math.Sqrt(Math.Pow(x - x2, 2) + Math.Pow(y - y2, 2));
+            return Math.Abs(x - x2) + Math.Abs(y - y2);
         }
 
         private List<Cell> GetSurrounding(int x, int y)
@@ -158,17 +234,94 @@ namespace Entity_Continuity
         }
 
         //Gets the surrounding 8 cells of the given cell
-        public List<Cell> GetSurroundingEntities(int x, int y)
+        public List<Cell> GetSurroundingEntities(Cell cell)
         {
-            List<Cell> surrounding = GetSurrounding(x, y);
-            return surrounding.Where(c => c is Entity).ToList();
+            List<Cell> surrounding = GetSurrounding(cell.X, cell.Y);
+            return surrounding.Where(c => c is Entity && c.House.HouseName != cell.House.HouseName && c.Level > 1).ToList();
         }
 
         //Gets the surrounding 8 cells of the given cell
         public List<Cell> GetSurroundingBlanks(int x, int y)
         {
             List<Cell> surrounding = GetSurrounding(x, y);
-            return surrounding.Where(c => c is not Entity).ToList();
+            return surrounding.Where(c => c is not Entity && c is not Dead).ToList();
+        }
+
+        //Find the closest entity to the given cell that has a lower level
+        public Cell GetTarget(Cell entity, int range = 6)
+        {
+            Cell closest = null;
+            int closestDistance = int.MaxValue;
+
+            for (int i = 0; i < Cells.Count; i++)
+            {
+                for (int j = 0; j < Cells[i].Count; j++)
+                {
+                    if (Cells[i][j] is Entity)
+                    {
+                        int distance = (int)Math.Sqrt(Math.Pow(entity.X - j, 2) + Math.Pow(entity.Y - i, 2));
+
+                        if (distance < closestDistance &&
+                           ((Entity)Cells[i][j]).Level < entity.Level &&
+                           Cells[i][j].House.HouseName != entity.House.HouseName &&
+                           Cells[i][j].Level > 1)
+                        {
+                            closest = (Entity)Cells[i][j];
+                            closestDistance = distance;
+                        }
+                    }
+                    else if (Cells[i][j] is Dead)
+                    {
+                        int distance = (int)Math.Sqrt(Math.Pow(entity.X - j, 2) + Math.Pow(entity.Y - i, 2));
+
+                        if (distance < closestDistance)
+                        {
+                            closest = (Dead)Cells[i][j];
+                            closestDistance = distance;
+                        }
+                    }
+                }
+            }
+
+            return (closestDistance < range) ? closest : null;
+        }
+
+        public Cell GetAvoid(Cell entity, int range = 6)
+        {
+            Cell closest = null;
+            int closestDistance = int.MaxValue;
+
+            for (int i = 0; i < Cells.Count; i++)
+            {
+                for (int j = 0; j < Cells[i].Count; j++)
+                {
+                    if (Cells[i][j] is Entity)
+                    {
+                        int distance = (int)Math.Sqrt(Math.Pow(entity.X - j, 2) + Math.Pow(entity.Y - i, 2));
+
+                        if (distance < closestDistance &&
+                           ((Entity)Cells[i][j]).Level > entity.Level &&
+                           Cells[i][j].House.HouseName != entity.House.HouseName &&
+                           Cells[i][j].Level > 1)
+                        {
+                            closest = (Entity)Cells[i][j];
+                            closestDistance = distance;
+                        }
+                    }
+                    else if (Cells[i][j] is Dead)
+                    {
+                        int distance = (int)Math.Sqrt(Math.Pow(entity.X - j, 2) + Math.Pow(entity.Y - i, 2));
+
+                        if (distance < closestDistance)
+                        {
+                            closest = (Dead)Cells[i][j];
+                            closestDistance = distance;
+                        }
+                    }
+                }
+            }
+
+            return (closestDistance < range) ? closest : null;
         }
 
         public List<List<Cell>> CloneCells()

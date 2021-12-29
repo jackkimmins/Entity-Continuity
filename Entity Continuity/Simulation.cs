@@ -9,6 +9,7 @@ namespace Entity_Continuity
     class Simulation
     {
         public Map Map { get; set; }
+        public List<House> Houses { get; set; }
 
         public Simulation(Map map)
         {
@@ -16,7 +17,7 @@ namespace Entity_Continuity
             Map = map;
         }
 
-        public void AddEntity()
+        public void AddEntity(House house = null)
         {
             Random random = new Random();
             int x = 0;
@@ -25,11 +26,32 @@ namespace Entity_Continuity
             do {
                 x = random.Next(0, Map.Width);
                 y = random.Next(0, Map.Height);
-            } while (Map.LookupCell(x, y) != 0);
+            } while (Map.LookupCell(x, y) != 1);
 
-            Entity entity = new Entity(x, y);
+            if (house == null)
+            {
+                house = Houses[random.Next(0, Houses.Count)];
+            }
+
+            Entity entity = new Entity(x, y, house);
+            //entity.Level = 7;
 
             Map.ReplaceCell(x, y, entity);
+        }
+
+        public void AddDead()
+        {
+            Random random = new Random();
+            int x = 0;
+            int y = 0;
+
+            do {
+                x = random.Next(0, Map.Width);
+                y = random.Next(0, Map.Height);
+            } while (Map.LookupCell(x, y) != 1);
+
+            Dead dead = new Dead(x, y);
+            Map.ReplaceCell(x, y, dead);
         }
 
         public void AddFood()
@@ -41,7 +63,7 @@ namespace Entity_Continuity
             do {
                 x = random.Next(0, Map.Width);
                 y = random.Next(0, Map.Height);
-            } while (Map.LookupCell(x, y) != 0);
+            } while (Map.LookupCell(x, y) != 1);
 
             Food food = new Food(x, y);
 
@@ -90,7 +112,11 @@ namespace Entity_Continuity
                     }
                     else if (Map.Cells[i][j] is Food)
                     {
-                        Map.Write("x", ConsoleColor.White);
+                        Map.Write("·", ConsoleColor.White);
+                    }
+                    else if (Map.Cells[i][j] is Dead)
+                    {
+                        Map.Write("*", ConsoleColor.White);
                     }
                     else
                     {
@@ -107,6 +133,20 @@ namespace Entity_Continuity
             }
 
             Map.GenHorsBorderLine(Map.Width);
+
+            Console.SetCursorPosition(Map.Width + 3, 0);
+            Console.WriteLine("Houses:");
+
+            //Sort the houses by population
+            var sortedHouses = Houses.OrderByDescending(h => House.GetPopulation(Map.Cells, h));
+
+            for (int i = 0; i < sortedHouses.Count(); i++)
+            {
+                Console.SetCursorPosition(Map.Width + 3, 1 + i);
+                Console.ForegroundColor = sortedHouses.ElementAt(i).HouseColour;
+                Console.WriteLine("* {0} - Size: {1} / Level: {2}", sortedHouses.ElementAt(i).HouseName, House.GetPopulation(Map.Cells, sortedHouses.ElementAt(i)), House.GetLevel(Map.Cells, sortedHouses.ElementAt(i)));
+                Console.ForegroundColor = ConsoleColor.White;
+            }
         }
 
         public void RawDraw()
@@ -123,7 +163,7 @@ namespace Entity_Continuity
                     }
                     else if (Map.Cells[i][j] is Food)
                     {
-                        Console.Write('x');
+                        Console.Write('.');
                     }
                     else
                     {
@@ -141,11 +181,13 @@ namespace Entity_Continuity
         {
             if (cell is Food)
             {
-                Entity newEntity = new Entity(cell.X, cell.Y);
+                Entity newEntity = new Entity(cell.X, cell.Y, entity.House);
                 newEntity.Level = entity.Level + 1;
                 newEntity.Colour = entity.Colour;
                 newEntity.X = cell.X;
                 newEntity.Y = cell.Y;
+
+                entity.Level = entity.Level + 1;
 
                 Map.ReplaceCell(cell.X, cell.Y, newEntity);
                 Map.ResetCell(entity.X, entity.Y);
@@ -154,10 +196,53 @@ namespace Entity_Continuity
                 // Console.WriteLine("Entity level: " + newEntity.Level);
                 // Console.WriteLine("Entity position: " + newEntity.X + " " + newEntity.Y);
             }
+            else if (cell is Entity)
+            {
+                Entity newEntity = new Entity(cell.X, cell.Y, entity.House);
+                newEntity.Level = entity.Level + cell.Level;
+                newEntity.Colour = entity.Colour;
+                newEntity.X = cell.X;
+                newEntity.Y = cell.Y;
+
+                entity.Level = entity.Level + cell.Level;
+
+                Map.ReplaceCell(cell.X, cell.Y, newEntity);
+                Map.ResetCell(entity.X, entity.Y);
+            }
         }
 
         private void EntityPaths(Entity entity)
         {
+            var surroundingEntities = Map.GetSurroundingEntities(entity);
+
+            if (surroundingEntities.Count > 0)
+            {
+                var closestEntity = surroundingEntities.OrderBy(x => Map.Distance(entity.X, entity.Y, x.X, x.Y)).First();
+
+                Eat(entity, closestEntity);
+                Reproduce(ref entity, closestEntity.X, closestEntity.Y);
+                return;
+            }
+
+            var avoid = Map.GetAvoid(entity, 10);
+
+            if (avoid is not null)
+            {
+                Navigate(entity, avoid, false);
+                return;
+            }
+
+            var target = Map.GetTarget(entity);
+
+            if (target is not null)
+            {
+                // Console.WriteLine(entity.House.HouseName + ": " + entity.Level + " " + entity.X + " " + entity.Y);
+                // Console.WriteLine(target.House.HouseName + ": " + target.Level + " " + target.X + " " + target.Y);
+                // Console.ReadKey();
+                Navigate(entity, target);
+                return;
+            }
+
             //Check the surrounding 8 cells for food.
             var surroundingCells = Map.GetSurroundingFoods(entity.X, entity.Y);
 
@@ -171,55 +256,170 @@ namespace Entity_Continuity
                 Eat(entity, closestFood);
 
                 AddFood();
+
+                //10% Randon chance to add food.
+                if (new Random().Next(0, 15) == 0)
+                {
+                    AddFood();
+                }
+
+                Reproduce(ref entity, closestFood.X, closestFood.Y);
             }
             else
             {
-                var surroundingBlanks = Map.GetSurroundingBlanks(entity.X, entity.Y);
+                var closestFood = Map.GetClosestFood(entity.X, entity.Y, entity.House.HouseName);
+                Navigate(entity, closestFood);
+            }
+        }
 
-                var closestFood = Map.GetClosestFood(entity.X, entity.Y);
+        private void DeadPaths(Dead entity)
+        {
+            var target = Map.GetTarget(entity, Map.Width);
 
-                // closestFood.Output();
-                // Console.ReadKey();
+            if (target is not null)
+            {
+                Navigate(entity, target);
+                return;
+            }
+        }
 
-                //Pick the cell from surroundingBlanks that is closest to the food.
-                int best = Int16.MaxValue;
-                int bestIndex = 0;
+        //Pick a random chance, the higher the chance, the higher the chance of reproduction.
+        public bool RandomChance(int chance)
+        {
+            int random = new Random().Next(6, 14);
 
-                foreach (var cell in surroundingBlanks)
+            if (random < chance)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private void Navigate(Cell entity, Cell target, bool towards = true)
+        {
+            var surroundingBlanks = Map.GetSurroundingBlanks(entity.X, entity.Y);
+
+            if (surroundingBlanks.Count <= 0)
+                return;
+
+            // closestFood.Output();
+            // Console.ReadKey();
+
+            //Pick the cell from surroundingBlanks that is closest to the food.
+            int best = towards ? Int16.MaxValue : 0;
+            int bestIndex = 0;
+
+            foreach (var cell in surroundingBlanks)
+            {
+                int distance = Map.Distance(cell.X, cell.Y, target.X, target.Y);
+
+                //Output the distance.
+                //Console.WriteLine("Distance: " + distance);
+                
+                if (towards)
                 {
-                    int distance = Map.Distance(cell.X, cell.Y, closestFood.X, closestFood.Y);
-
-                    //Output the distance.
-                    //Console.WriteLine("Distance: " + distance);
-                    
-                    if (best > distance)
+                    if (distance < best)
                     {
                         best = distance;
                         bestIndex = surroundingBlanks.IndexOf(cell);
                     }
                 }
+                else
+                {
+                    if (distance > best)
+                    {
+                        best = distance;
+                        bestIndex = surroundingBlanks.IndexOf(cell);
+                    }
+                }
+            }
 
-                //Output best
-                //Console.WriteLine("Best: " + best);
+            //Output best
+            //Console.WriteLine("Best: " + best);
 
+            if (entity is Entity)
+            {
                 Cell nextCell = surroundingBlanks[bestIndex];
 
-                Entity newEntity = new Entity(nextCell.X, nextCell.Y);
+                entity.Hunger = entity.Hunger + ((entity.Level - 2) * 1.05);
+
+                if (entity.Hunger >= 20)
+                {
+                    entity.Hunger = 0;
+                    entity.Level = entity.Level - 1;
+                }
+
+                Entity newEntity = new Entity(nextCell.X, nextCell.Y, entity.House);
+                newEntity.Hunger = entity.Hunger;
+
                 newEntity.Level = entity.Level;
+
                 newEntity.Colour = entity.Colour;
 
                 Map.ResetCell(entity.X, entity.Y);
-                Map.ReplaceCell(nextCell.X, nextCell.Y, newEntity);
+                if (newEntity.Level >= 0 && entity.Hunger < 20)
+                {
+                    Map.ReplaceCell(nextCell.X, nextCell.Y, newEntity);
+                }
+                else
+                {
+                    Food food = new Food(nextCell.X, nextCell.Y);
+                    Map.ReplaceCell(nextCell.X, nextCell.Y, food);
+                }
             }
+            else if (entity is Dead)
+            {
+                Cell nextCell = surroundingBlanks[bestIndex];
+
+                Dead newDead = new Dead(nextCell.X, nextCell.Y);
+
+                Map.ResetCell(entity.X, entity.Y);
+                Map.ReplaceCell(nextCell.X, nextCell.Y, newDead);
+            }
+        }
+
+        private void Reproduce(ref Entity entity, int x, int y)
+        {
+            if (entity.Level >= 10)
+            {
+                var spawnCells = Map.GetSurroundingBlanks(entity.X, entity.Y);
+
+                if (spawnCells.Count > 0)
+                {
+                    var nextCell = spawnCells[new Random().Next(0, spawnCells.Count)];
+
+                    entity.Level = 0;
+
+                    Entity resetEntity = new Entity(x, y, entity.House);
+                    resetEntity.Level = 0;
+                    resetEntity.Colour = entity.Colour;
+
+                    Entity newEntity = new Entity(nextCell.X, nextCell.Y, entity.House);
+                    newEntity.Level = 0;
+                    newEntity.Colour = entity.Colour;
+
+                    Map.ReplaceCell(nextCell.X, nextCell.Y, newEntity);
+                    Map.ReplaceCell(x, y, resetEntity);
+                }
+            }
+        }
+
+        private void DrawAsync()
+        {
+            Task.Run(() =>
+            {
+                Draw();
+            });
         }
 
         public void Start()
         {
-            int loopNum = 1;
+            int cycle = 0;
 
-            int entityCount2 = Map.Cells.SelectMany(x => x).Count(x => x is Entity);
-            // Console.WriteLine("Entity count: " + entityCount2);
-            // Console.ReadKey();
+            // DrawLoop();
+
+            Console.Write("Cycle: 0");
 
             while (true)
             {
@@ -235,36 +435,27 @@ namespace Entity_Continuity
                         if (cells[i][j] is Entity)
                         {
                             EntityPaths((Entity)cells[i][j]);
-                            //Console.WriteLine(loopNum + ": Coordinates: " + i + " " + j);
-                                                    // cells[i][j].Output();
+                        }
+                        else if (cells[i][j] is Dead)
+                        {
+                            DeadPaths((Dead)cells[i][j]);
                         }
                     }
                 }
 
-                loopNum++;  
+                cycle++;
 
-                if (entityCount2 != Map.Cells.SelectMany(x => x).Count(x => x is Entity))
-                {
-                    entityCount2 = Map.Cells.SelectMany(x => x).Count(x => x is Entity);
-                    AddEntity();
-                }
+                // System.Threading.Thread.Sleep(250);
 
-                //Count the number of entities.
-
-
-                //Console.ReadKey();
-
-                if (loopNum >= 1000)
-                {
-                    Draw();
-
-                    int entityCount = Map.Cells.SelectMany(x => x).Count(x => x is Entity);
-                    Console.WriteLine("Entity count: " + entityCount);
-
-                    break;
-                }
-
-                System.Threading.Thread.Sleep(50);
+                //if (cycle >= 500)
+                //{
+                //   Draw();
+                //}
+                //else
+                //{
+                //   Console.SetCursorPosition(7, 0);
+                //   Console.Write(cycle);
+                //}
             }
         }
     }

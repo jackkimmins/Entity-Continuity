@@ -12,6 +12,8 @@ namespace Entity_Continuity
         public int Y { get; set; }
         public virtual ConsoleColor Colour { get; set; }
         public virtual int Level { get; set; }
+        public virtual House House { get; set; }
+        public virtual double Hunger { get; set; }
         public Cell(int x, int y)
         {
             X = x;

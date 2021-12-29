@@ -10,10 +10,15 @@ namespace Entity_Continuity
     {
         public override int Level { get; set; }
         public override ConsoleColor Colour { get; set; }
-        public Entity(int x, int y) : base(x, y)
+        public override House House { get; set; }
+        public override double Hunger { get; set; }
+        public Entity(int x, int y, House house) : base(x, y)
         {
             Level = 0;
-            Colour = (ConsoleColor)new Random().Next(0, 16);
+            Hunger = 0;
+            House = house;
+
+            Colour = house.HouseColour;
         }
     }
 }
