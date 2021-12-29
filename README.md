@@ -12,3 +12,6 @@ Expanding on the work that I have been doing with path finding algorithms to mak
 *	Higher levelled cells can hunt lower levelled cells of a different house that have a level higher than 0. If it captures the target cell, it will consume its levels and terminate it.
 *	Lower levelled cells will avoid higher levelled cells of a different house.
 *	As entities move around the map, they will increase their hunger level. The larger the cell's level, the faster this will happen. If a cell reaches 20, it will consume 1 of its levels until there are none left causing it to die.
+
+## Screenshots
+<img src="https://raw.githubusercontent.com/jackkimmins/Entity-Continuity/master/imgs/1.png">
