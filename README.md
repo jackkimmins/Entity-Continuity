@@ -14,7 +14,7 @@ Expanding on the work that I have been doing with path finding algorithms to mak
 *	As entities move around the map, they will increase their hunger level. The larger the cell's level, the faster this will happen. If a cell reaches 20, it will consume 1 of its levels until there are none left causing it to die.
 
 ## Demo Video
-<iframe width="560" height="315" src="https://www.youtube.com/embed/dFQGAOWGyvA" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+[![Project Demo Video](http://img.youtube.com/vi/dFQGAOWGyvA/0.jpg)](http://www.youtube.com/watch?v=dFQGAOWGyvA "Entity Continuity Demo Video")
 
 ## Screenshots
 <img src="https://raw.githubusercontent.com/jackkimmins/Entity-Continuity/master/imgs/1.png">
