@@ -38,7 +38,7 @@ namespace Entity_Continuity
 
             //simulation.AddDead();
 
-            simulation.AddFood(simulation.Houses.Count * 30);
+            simulation.AddFood(simulation.Houses.Count * 50);
 
             simulation.Start();
         }

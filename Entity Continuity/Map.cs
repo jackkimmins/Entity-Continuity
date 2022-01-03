@@ -127,17 +127,6 @@ namespace Entity_Continuity
                         {
                             List<int> otherDistancesToFood = new List<int>();
 
-                            // //Add all entities to a dictionary with their distance from the food.
-
-
-                            // Parallel.ForEach(Entities(houseName), (entity) =>
-                            // {
-                            //     if (entity.X != x && entity.Y != y)
-                            //     {
-                            //         otherDistancesToFood.Add((int)Math.Sqrt(Math.Pow(entity.X - j, 2) + Math.Pow(entity.Y - i, 2)));
-                            //     }
-                            // });
-
                             foreach (var entity in Entities(houseName))
                             {
                                 if (entity.X != x && entity.Y != y)
@@ -146,32 +135,11 @@ namespace Entity_Continuity
                                 }
                             }
 
-                            // if (otherDistancesToFood.Count >= 1)
-                            // {
-                            //     Console.Clear();
-
-                            //     Console.WriteLine(Entities(houseName).Count);
-
-                            //     //Output otherDistancesToFood
-                            //     foreach (int distanceToFood in otherDistancesToFood)
-                            //     {
-                            //         Console.WriteLine("Loop: " + distanceToFood);
-                            //     }
-
-                            //     Console.WriteLine(distance);
-
-                            //     Console.ReadKey();
-                            // }
-
-                            // // //If there are no entities, or if the closest entity is closer than the food, then the food is the closest.
                             if (otherDistancesToFood.Count == 0 || otherDistancesToFood.Min() > distance)
                             {
                                 closest = Cells[i][j] as Food;
                                 closestDistance = distance;
                             }
-
-                            // closest = (Food)Cells[i][j];
-                            // closestDistance = distance;
                         }
                     }
                 }

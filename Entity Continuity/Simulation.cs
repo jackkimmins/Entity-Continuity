@@ -86,7 +86,7 @@ namespace Entity_Continuity
             }
         }
 
-        public void Draw()
+        public void Draw(int cycle = -1)
         {
             Console.SetCursorPosition(0, 0);
 
@@ -134,7 +134,7 @@ namespace Entity_Continuity
 
             Map.GenHorsBorderLine(Map.Width);
 
-            Console.SetCursorPosition(Map.Width + 3, 0);
+            Console.SetCursorPosition(Map.Width + 5, 1);
             Console.WriteLine("Houses:");
 
             //Sort the houses by population
@@ -142,10 +142,16 @@ namespace Entity_Continuity
 
             for (int i = 0; i < sortedHouses.Count(); i++)
             {
-                Console.SetCursorPosition(Map.Width + 3, 1 + i);
+                Console.SetCursorPosition(Map.Width + 5, 2 + i);
                 Console.ForegroundColor = sortedHouses.ElementAt(i).HouseColour;
-                Console.WriteLine("* {0} - Size: {1} / Level: {2}", sortedHouses.ElementAt(i).HouseName, House.GetPopulation(Map.Cells, sortedHouses.ElementAt(i)), House.GetLevel(Map.Cells, sortedHouses.ElementAt(i)));
+                Console.WriteLine("* {0} - Size: {1} / Level: {2}     ", sortedHouses.ElementAt(i).HouseName, House.GetPopulation(Map.Cells, sortedHouses.ElementAt(i)), House.GetLevel(Map.Cells, sortedHouses.ElementAt(i)));
                 Console.ForegroundColor = ConsoleColor.White;
+            }
+
+            if (cycle > -1)
+            {
+                Console.SetCursorPosition(Map.Width + 7, sortedHouses.Count() + 3);
+                Console.WriteLine("Cycle: " + cycle);
             }
         }
 
@@ -209,6 +215,8 @@ namespace Entity_Continuity
                 Map.ReplaceCell(cell.X, cell.Y, newEntity);
                 Map.ResetCell(entity.X, entity.Y);
             }
+
+            AddFood(2);
         }
 
         private void EntityPaths(Entity entity)
@@ -255,10 +263,10 @@ namespace Entity_Continuity
                 //Move to the closest food.
                 Eat(entity, closestFood);
 
-                AddFood();
+                
 
                 //10% Randon chance to add food.
-                if (new Random().Next(0, 15) == 0)
+                if (new Random().Next(0, 10) == 0)
                 {
                     AddFood();
                 }
@@ -423,7 +431,7 @@ namespace Entity_Continuity
 
             while (true)
             {
-                Draw();
+                Draw(cycle);
 
                 List<List<Cell>> cells = Map.CloneCells();
 
@@ -444,6 +452,15 @@ namespace Entity_Continuity
                 }
 
                 cycle++;
+
+                //ScreenCapture.CaptureScreenToFile(@"G:\EC-Imgs", cycle + ".png");
+
+                if (Houses.Where(h => House.GetPopulation(Map.Cells, h) > 0).Count() <= 1)
+                {
+                    break;
+                }
+
+                //Console.ReadKey();
 
                 // System.Threading.Thread.Sleep(250);
 
